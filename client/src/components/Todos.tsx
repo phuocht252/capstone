@@ -20,6 +20,9 @@ import { createTodo, deleteTodo, getTodos, patchTodo, getSignedUrl } from '../ap
 import Auth from '../auth/Auth'
 import { Todo } from '../types/Todo'
 
+const FALLBACK_IMAGE =
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Stadtbild_M%C3%BCnchen.jpg/2560px-Stadtbild_M%C3%BCnchen.jpg';
+
 interface TodosProps {
   auth: Auth
   history: History
@@ -211,8 +214,13 @@ export class Todos extends React.PureComponent<TodosProps, TodosState> {
                 </Button>
               </Grid.Column>
               {todo.attachmentUrl && (
-                <Image src={todo.attachmentUrl} size="small" wrapped onClick={() => this.onAttachmentDownload(pos)} />
-                
+                <Image src={todo.attachmentUrl} size="small" wrapped 
+                  onError={(e: Event) => {
+                    (e.target as HTMLImageElement).onerror = null;
+                    (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
+                  }}
+                  
+                />
               )}
               <Grid.Column width={16}>
                 <Divider />

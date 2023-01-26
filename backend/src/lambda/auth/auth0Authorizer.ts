@@ -1,36 +1,39 @@
 import { CustomAuthorizerEvent, CustomAuthorizerResult } from 'aws-lambda'
 import 'source-map-support/register'
 
-import { verify } from 'jsonwebtoken'
+import { verify, decode } from 'jsonwebtoken'
 import { createLogger } from '../../utils/logger'
+import Axios from 'axios'
+import { Jwt } from '../../auth/Jwt'
 import { JwtPayload } from '../../auth/JwtPayload'
 
 const logger = createLogger('auth')
 
-// TODO: Provide a URL that can be used to download a certificate that can be used
-// to verify JWT token signature.
-// To get this URL you need to go to an Auth0 page -> Show Advanced Settings -> Endpoints -> JSON Web Key Set
-// const jwksUrl = 'https://dev-tlmy21ms5qfmsfwi.us.auth0.com/.well-known/jwks.json'
-// To get this URL you need to go to an Auth0 page -> Show Advanced Settings -> Certificates -> Signing Certificate
+
+/*
 const cert = `-----BEGIN CERTIFICATE-----
-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
+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
 -----END CERTIFICATE-----`
+*/ 
+
+//implement if there is time otherwise stick with hardcoded certificate
+const jwksUrl = 'https://dev-vq8kaqph8eplmtc4.us.auth0.com/.well-known/jwks.json'
 
 export const handler = async (
   event: CustomAuthorizerEvent
@@ -74,12 +77,18 @@ export const handler = async (
 
 async function verifyToken(authHeader: string): Promise<JwtPayload> {
   const token = getToken(authHeader)
-  //const jwt: Jwt = decode(token, { complete: true }) as Jwt
+  const jwt: Jwt = decode(token, { complete: true }) as Jwt
+  console.log('Request: ' + jwksUrl);
+  const res = await Axios.get(jwksUrl);
+  const keys = res.data.keys.find(key => key.kid === jwt.header.kid);
+  console.log("keys: "+keys);
 
-  // TODO: Implement token verification
-  // You should implement it similarly to how it was implemented for the exercise for the lesson 5
-  // You can read more about how to do this here: https://auth0.com/blog/navigating-rs256-and-jwks/
-  return verify(token, cert, { algorithms: ['RS256'] }) as JwtPayload
+  if(!keys){
+    throw new Error('Error getting signing keys');
+  }
+
+  const certificate = '-----BEGIN CERTIFICATE-----\n'+keys.x5c[0]+'\n-----END CERTIFICATE-----';
+  return verify(token,certificate,{algorithms: ['RS256']}) as JwtPayload
 }
 
 function getToken(authHeader: string): string {
